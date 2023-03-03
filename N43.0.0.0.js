@@ -252,6 +252,7 @@ N43.File = class {
             balance += transaction.Amount;
 
             transaction.Balance = parseFloat(balance.toFixed(2));
+			transaction.Order = t + 1;
 
             result.Transactions.push(transaction);
 

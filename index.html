@@ -18,6 +18,7 @@
     <!-- Selector de archivo -->
     <label for="file" style="font-size: 1rem; color: tomato">Seleccione un archivo de norma 43:</label><br /><br />
     <input type="file" id="file" title="Cargar archivo norma 43" accept="text/plain" onchange="LoadFile(this.files);" /><br /><br />
+	<div id="AccountId"></div>
     <!-- Contenedor para la tabla de transacciones -->
     <div id="transactionsContainer"></div>
 
@@ -45,6 +46,8 @@
 
                     var transactionResult = GetTransactionResult(textFileContent);
 
+					document.getElementById("AccountId").innerHTML = transactionResult.AccountId;
+					
                     ShowTable(transactionResult.Transactions);
 
                 };
