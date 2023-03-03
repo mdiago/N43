@@ -1,0 +1,105 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta charset="utf-8" />
+    <title>EJEMPLO LECTURA ARCHIVO NORMA 43</title>
+
+    <style>
+
+        table, tr, td {
+            border: 1px solid gray;            
+        }
+
+    </style>
+
+</head>
+<body style="font-size: 0.5rem;">
+    <!-- Selector de archivo -->
+    <label for="file" style="font-size: 1rem; color: tomato">Seleccione un archivo de norma 43:</label><br /><br />
+    <input type="file" id="file" title="Cargar archivo norma 43" accept="text/plain" onchange="LoadFile(this.files);" /><br /><br />
+    <!-- Contenedor para la tabla de transacciones -->
+    <div id="transactionsContainer"></div>
+
+    <!-- Script N43  -->
+    <script src="N43.0.0.0.js"></script>
+
+    <!-- Ejemplo de uso -->
+    <script>
+
+        /**
+         * Manejador del evento change de #file.
+         * @param {Object} files Archivos seleccionados.
+         * */
+        function LoadFile(files) {
+
+            for (var i = 0; i < files.length; i++) {
+
+                var file = files[i];
+
+                var reader = new FileReader();
+
+                reader.onload = function (e) {
+
+                    var textFileContent = e.target.result;
+
+                    var transactionResult = GetTransactionResult(textFileContent);
+
+                    ShowTable(transactionResult.Transactions);
+
+                };
+
+                reader.readAsText(file, "ASCII");
+
+            }
+
+        };
+
+        /**
+         * Procesa un archivo de texto de norma 43.
+         * @param {string} fileText Texto con el
+         * contenido del archivo de norma 43.
+         * */
+        function GetTransactionResult(fileText){
+        
+            
+            // Creamos el objeto N43.File
+            var fileN43 = new N43.File({ Text: fileText });
+
+            // Devolvemos el resultado procesado
+            return fileN43.GetTransactions();
+
+        };        
+
+        /**
+         * Muestra las transacciones de un archivo
+         * de norma 43 procesado.
+         * @param {Array} transactions Transacciones 
+         * de un archivo de norma 43 procesado.
+         * */
+        function ShowTable(transactions){
+        
+            var html = '';
+
+            for (var t = 0; t < transactions.length; t++) {
+                var transaction = transactions[t];
+                html += `<tr>` +
+                    `<td>${transaction.BookingDate.toISOString().substr(0, 10)}</td>` +
+                    `<td>${transaction.RemittanceInformationUnstructured}</td>` +
+                    `<td style='text-align: right;'>${transaction.Amount}</td>` +
+                    `<td style='text-align: right;'>${transaction.Balance}</td>` +
+                    `</tr>`;
+
+            }
+
+            html = `<table cellspacing=0 cellpadding=0>\n${html}\n</table>`;
+
+            document.getElementById("transactionsContainer").innerHTML = html;
+
+        
+        };
+
+    </script>
+
+</body>
+</html>
