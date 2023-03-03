@@ -1,6 +1,8 @@
 # N43
 Lectura de archivos de movimientos bancarios según las especificaciones de la AEB en las serie normas y procedimientos bancarios 43.
 
+En el siguiente enlace puede encontrar un 
+
 ## Ejemplo de utilización
 
 ```javascript
