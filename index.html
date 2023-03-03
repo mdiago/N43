@@ -7,23 +7,50 @@
 
     <style>
 
+        body {
+            font-size: 1.1rem;
+            font-family: sans-serif;
+        }
+
         table, tr, td {
-            border: 1px solid gray;            
+            border: 1px solid gray;    
+            font-size: 0.8rem;
+        }
+
+        #transactionsContainer div {
+            background-color: #0e0505;
+            color: tomato;
+            padding: 1rem;
+        }
+
+        .amount, .balance {
+            text-align: right;
+            width: 150px;
+        }
+
+        .bookingDate {
+            width: 120px;
+        }
+
+        .info {
+            width: 880px;
+            overflow:hidden;
         }
 
     </style>
 
 </head>
-<body style="font-size: 0.5rem;">
+<body>
+
     <!-- Selector de archivo -->
     <label for="file" style="font-size: 1rem; color: tomato">Seleccione un archivo de norma 43:</label><br /><br />
     <input type="file" id="file" title="Cargar archivo norma 43" accept="text/plain" onchange="LoadFile(this.files);" /><br /><br />
-	<div id="AccountId"></div>
+
     <!-- Contenedor para la tabla de transacciones -->
     <div id="transactionsContainer"></div>
 
     <!-- Script N43  -->
-    <script src="N43.0.0.0.js"></script>
+    <script src="N43.0.0.1.js"></script>
 
     <!-- Ejemplo de uso -->
     <script>
@@ -44,11 +71,11 @@
 
                     var textFileContent = e.target.result;
 
-                    var transactionResult = GetTransactionResult(textFileContent);
+                    var transactionResults = GetTransactionResult(textFileContent);
 
-					document.getElementById("AccountId").innerHTML = transactionResult.AccountId;
+                    transactionResults.forEach((transactionResult) => { ShowTable(transactionResult); })
 					
-                    ShowTable(transactionResult.Transactions);
+                    
 
                 };
 
@@ -72,7 +99,37 @@
             // Devolvemos el resultado procesado
             return fileN43.GetTransactions();
 
-        };        
+        };
+
+        /**
+         * Formatea un número.
+         * @param number Número a formatear.
+         * @param decimals Número de decimales
+         * @param decimalSeparator Separador de decimales.
+         * @param thousandSeparator Separador de miles.
+         */
+        function ToAmountFormat (number, decimals, decimalSeparator, thousandSeparator) {
+
+            var abs = Math.abs(number);
+
+            var input = abs.toFixed(decimals);
+
+            var cleared = input.replace(/[^\d]/, "");
+
+            var decimal = cleared.substring(cleared.length - decimals, cleared.length);
+            var whole = cleared.substring(0, cleared.length - decimals);
+
+            var wholeResult = "";
+
+            for (var w = whole.length - 1; w > -1; w--) {
+                if ((whole.length - w) % 3 === 0 && w !== 0)
+                    wholeResult = thousandSeparator + whole[w] + wholeResult;
+                else
+                    wholeResult = whole[w] + wholeResult;
+            }
+
+            return (number < 0 ? "-" : "") + wholeResult + decimalSeparator + decimal;
+        };
 
         /**
          * Muestra las transacciones de un archivo
@@ -80,25 +137,30 @@
          * @param {Array} transactions Transacciones 
          * de un archivo de norma 43 procesado.
          * */
-        function ShowTable(transactions){
+        function ShowTable(transactionResult){
         
-            var html = '';
+            var html = `<br /><br /><div>Banco: ${transactionResult.BankId}` +
+                ` - Cuenta: ${transactionResult.AccountId} - Moneda: ${transactionResult.Currency}` +
+                ` - Moneda: ${transactionResult.Currency}` +
+                ` - Saldo inicial: ${ToAmountFormat(transactionResult.BalanceStart, 2, ",", ".")}`+
+                ` - Saldo final: ${ToAmountFormat(transactionResult.BalanceEnd, 2, ",", ".")}</div><br/>`;
+
+            transactions = transactionResult.Transactions;
 
             for (var t = 0; t < transactions.length; t++) {
                 var transaction = transactions[t];
                 html += `<tr>` +
-                    `<td>${transaction.BookingDate.toISOString().substr(0, 10)}</td>` +
-                    `<td>${transaction.RemittanceInformationUnstructured}</td>` +
-                    `<td style='text-align: right;'>${transaction.Amount}</td>` +
-                    `<td style='text-align: right;'>${transaction.Balance}</td>` +
+                    `<td class="bookingDate">${transaction.BookingDate.toISOString().substr(0, 10)}</td>` +
+                    `<td class="info">${transaction.RemittanceInformationUnstructured}</td>` +
+                    `<td class="amount">${ToAmountFormat(transaction.Amount, 2, ",", ".")}</td>` +
+                    `<td class="balance">${ToAmountFormat(transaction.Balance, 2, ",", ".")}</td>` +
                     `</tr>`;
 
             }
 
-            html = `<table cellspacing=0 cellpadding=0>\n${html}\n</table>`;
+            html = `<table cellspacing=0 cellpadding=4>\n${html}\n</table>`;
 
-            document.getElementById("transactionsContainer").innerHTML = html;
-
+            document.getElementById("transactionsContainer").innerHTML += html;
         
         };
 

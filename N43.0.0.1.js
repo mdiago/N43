@@ -8,7 +8,7 @@
  *              según las especificaciones de la AEB en las serie normas y 
  *              procedimientos bancarios 43.
  * @version     0.0.0
- * @file        N43.0.0.0.js
+ * @file        N43.0.0.1.js
  * @author      Irene Solutions SL
  * @contact     support@irenesolutions.com
  * @copyright   Copyright 2023 Irene Solutions SL.
@@ -42,8 +42,8 @@ N43.File = class {
     // Private fields
     #Options = null;
     #RawTextLines = null;
-    #Header = null;
-    #AccountEnd = null;
+    #Headers = null;
+    #AccountEnds = null;
     #FileEnd = null;
     #RawTransactions = [];
 
@@ -76,79 +76,161 @@ N43.File = class {
 
         });
 
-        this.#Header = this.GetRecordsByTypeName(['CabeceraDeCuenta'])[0];
-        this.#AccountEnd = this.GetRecordsByTypeName(['FinalDeCuenta'])[0];
+        this.#Headers = this.GetRecordsByTypeName(['CabeceraDeCuenta']);
+        this.#AccountEnds = this.GetRecordsByTypeName(['FinalDeCuenta']);
         this.#FileEnd = this.GetRecordsByTypeName(['FinalDeFichero'])[0];
 
-        let currentMovement = null;
+        for (let h = 0; h < this.#Headers.length; h++) {
 
-        for (let i = 0; i < this.Records.length; i++) {
+            var header = this.#Headers[h];
+            var accountEnd = this.#AccountEnds[h];
 
-            let record = this.Records[i];
+            var startIndex = this.GetRecordIndex(header);
+            var endIndex = this.GetRecordIndex(accountEnd);
 
-            switch (record.RecordType) {
+            let currentMovement = null;
 
-                case 'Movimiento':
+            for (let i = startIndex; i <= endIndex; i++) {
 
-                    if (currentMovement)
-                        this.#RawTransactions.push(currentMovement);
+                let record = this.Records[i];
 
-                    let mult = record.Fields['Clave Debe o Haber'].Value === "1" ? -1 : 1;
+                switch (record.RecordType) {
 
-                    currentMovement =
-                    {
-                        BookingDate: record.Fields['Fecha operación'].Value,
-                        ValueDate: record.Fields['Fecha valor'].Value,
-                        RemittanceInformationUnstructured: [(record.Fields['Concepto propio'].Value + " " + [N43.Concepts[record.Fields['Concepto común'].Value]]).trim()],
-                        Currency: this.Header.Currency,
-                        Currency: this.Header.Currency,
-                        Amount: mult * record.Fields['Importe'].Value,
-                        DocumentCurrency: this.Header.Currency,
-                        DocumentAmount: mult * record.Fields['Importe'].Value
-                    };
+                    case 'Movimiento':
 
-                    break;
-                case 'ComplementarioConcepto':
+                        if (currentMovement)
+                            this.#RawTransactions.push(currentMovement);
 
-                    if (currentMovement) {
+                        let mult = record.Fields['Clave Debe o Haber'].Value === "1" ? -1 : 1;
 
-                        let concepto = record.Fields['Concepto 1'].Value.trim();
-
-                        if (concepto)
-                            currentMovement.RemittanceInformationUnstructured.push(concepto);
-
-                        concepto = record.Fields['Concepto 2'].Value.trim();
-
-                        if (concepto)
-                            currentMovement.RemittanceInformationUnstructured.push(concepto);
-
-                    }
-
-                    break;
-
-                case 'ComplementarioImporte':
-
-                    if (currentMovement) {
-
-                        let divisa = record.Fields['Clave divisa origen del movimiento'].Value.trim();
-                        let currency = N43.Currencies[divisa];
-
-                        if (currency !== currentMovement.Currency) {
-                            currentMovement.DocumentCurrency = divisa;
-                            currentMovement.DocumentAmount = record.Fields['Importe'].Value;
-
+                        currentMovement =
+                        {
+                            HeaderIndex: h,
+                            BookingDate: record.Fields['Fecha operación'].Value,
+                            ValueDate: record.Fields['Fecha valor'].Value,
+                            RemittanceInformationUnstructured: [(record.Fields['Concepto propio'].Value + " " + [N43.Concepts[record.Fields['Concepto común'].Value]]).trim()],
+                            Currency: header.Currency,
+                            Amount: mult * record.Fields['Importe'].Value,
+                            DocumentCurrency: header.Currency,
+                            DocumentAmount: mult * record.Fields['Importe'].Value
                         };
 
-                    }
+                        break;
+                    case 'ComplementarioConcepto':
 
-                    break;
+                        if (currentMovement) {
 
-            };
+                            let concepto = record.Fields['Concepto 1'].Value.trim();
+
+                            if (concepto)
+                                currentMovement.RemittanceInformationUnstructured.push(concepto);
+
+                            concepto = record.Fields['Concepto 2'].Value.trim();
+
+                            if (concepto)
+                                currentMovement.RemittanceInformationUnstructured.push(concepto);
+
+                        }
+
+                        break;
+
+                    case 'ComplementarioImporte':
+
+                        if (currentMovement) {
+
+                            let divisa = record.Fields['Clave divisa origen del movimiento'].Value.trim();
+                            let currency = N43.Currencies[divisa];
+
+                            if (currency !== currentMovement.Currency) {
+                                currentMovement.DocumentCurrency = divisa;
+                                currentMovement.DocumentAmount = record.Fields['Importe'].Value;
+
+                            };
+
+                        }
+
+                        break;
+
+                };
+
+            }
+
+            if (currentMovement)
+                this.#RawTransactions.push(currentMovement);
+
+
 
         }
 
-        if (currentMovement)
-            this.#RawTransactions.push(currentMovement);
+        //let currentMovement = null;
+
+        //for (let i = 0; i < this.Records.length; i++) {
+
+        //    let record = this.Records[i];
+
+        //    switch (record.RecordType) {
+
+        //        case 'Movimiento':
+
+        //            if (currentMovement)
+        //                this.#RawTransactions.push(currentMovement);
+
+        //            let mult = record.Fields['Clave Debe o Haber'].Value === "1" ? -1 : 1;
+
+        //            currentMovement =
+        //            {
+        //                BookingDate: record.Fields['Fecha operación'].Value,
+        //                ValueDate: record.Fields['Fecha valor'].Value,
+        //                RemittanceInformationUnstructured: [(record.Fields['Concepto propio'].Value + " " + [N43.Concepts[record.Fields['Concepto común'].Value]]).trim()],
+        //                Currency: this.Header.Currency,
+        //                Currency: this.Header.Currency,
+        //                Amount: mult * record.Fields['Importe'].Value,
+        //                DocumentCurrency: this.Header.Currency,
+        //                DocumentAmount: mult * record.Fields['Importe'].Value
+        //            };
+
+        //            break;
+        //        case 'ComplementarioConcepto':
+
+        //            if (currentMovement) {
+
+        //                let concepto = record.Fields['Concepto 1'].Value.trim();
+
+        //                if (concepto)
+        //                    currentMovement.RemittanceInformationUnstructured.push(concepto);
+
+        //                concepto = record.Fields['Concepto 2'].Value.trim();
+
+        //                if (concepto)
+        //                    currentMovement.RemittanceInformationUnstructured.push(concepto);
+
+        //            }
+
+        //            break;
+
+        //        case 'ComplementarioImporte':
+
+        //            if (currentMovement) {
+
+        //                let divisa = record.Fields['Clave divisa origen del movimiento'].Value.trim();
+        //                let currency = N43.Currencies[divisa];
+
+        //                if (currency !== currentMovement.Currency) {
+        //                    currentMovement.DocumentCurrency = divisa;
+        //                    currentMovement.DocumentAmount = record.Fields['Importe'].Value;
+
+        //                };
+
+        //            }
+
+        //            break;
+
+        //    };
+
+        //}
+
+        //if (currentMovement)
+        //    this.#RawTransactions.push(currentMovement);
 
     }
 
@@ -173,43 +255,65 @@ N43.File = class {
     /**
     * Cálculo digito de control
      */
-    get DigitControl() {
+    get DigitControls() {
 
-        let clave = this.#Header.Fields['Clave de la Entidad'].RawText + this.#Header.Fields['Clave de Oficina'].RawText;
-        let factors = [4, 8, 5, 10, 9, 7, 3, 6];
+        var digitControls = [];
 
-        let sumProducts = 0;
+        for (let h = 0; h < this.#Headers.length; h++)
+        {
 
-        factors.forEach((factor, index) => { sumProducts += parseInt(clave[index]) * factor; });
+            var header = this.#Headers[h];
 
-        let control = 11 - (sumProducts % 11);
+            let clave = header.Fields['Clave de la Entidad'].RawText + header.Fields['Clave de Oficina'].RawText;
+            let factors = [4, 8, 5, 10, 9, 7, 3, 6];
 
-        sumProducts = 0;
-        clave = this.#Header.Fields['Nº de cuenta'].RawText;
-        factors = [1, 2, 4, 8, 5, 10, 9, 7, 3, 6];
-        factors.forEach((factor, index) => { sumProducts += parseInt(clave[index]) * factor; });
+            let sumProducts = 0;
 
-        return '' + control + (11 - (sumProducts % 11));
+            factors.forEach((factor, index) => { sumProducts += parseInt(clave[index]) * factor; });
+
+            let control = 11 - (sumProducts % 11);
+
+            sumProducts = 0;
+            clave = header.Fields['Nº de cuenta'].RawText;
+            factors = [1, 2, 4, 8, 5, 10, 9, 7, 3, 6];
+            factors.forEach((factor, index) => { sumProducts += parseInt(clave[index]) * factor; });
+
+            digitControls.push('' + control + (11 - (sumProducts % 11)));
+
+        }
+
+        return digitControls;
 
     }
 
     /**
     * Encabezado
      */
-    get Header() {
+    get Headers() {
 
-        return {
+        var headers = [];
 
-            AccountId: `${this.#Header.Fields['Clave de la Entidad']}` +
-                `${this.#Header.Fields['Clave de Oficina']}${this.DigitControl}` +
-                `${this.#Header.Fields['Nº de cuenta']}`,
-            Currency: N43.Currencies[`${this.#Header.Fields['Clave de divisa']}`],
-            BalanceStart: this.#Header.Fields['Importe saldo inicial'].Value,
-            BalanceEnd: this.#AccountEnd.Fields['Saldo final'].Value,
-            BalanceVariation: parseFloat((this.#AccountEnd.Fields['Saldo final'].Value -
-                this.#Header.Fields['Importe saldo inicial'].Value).toFixed(2)),
-            RecordCount: this.#FileEnd.Fields['Nº de registros'].Value
-        };
+        for (let h = 0; h < this.#Headers.length; h++)
+        {
+
+            var header = this.#Headers[h];
+            var accountEnd = this.#AccountEnds[h];
+
+            headers.push({
+                AccountId: `${header.Fields['Clave de la Entidad']}` +
+                    `${header.Fields['Clave de Oficina']}${this.DigitControls[h]}` +
+                    `${header.Fields['Nº de cuenta']}`,
+                BankId: `${header.Fields['Clave de la Entidad']}`,
+                Currency: N43.Currencies[`${header.Fields['Clave de divisa']}`],
+                BalanceStart: header.Fields['Importe saldo inicial'].Value,
+                BalanceEnd: accountEnd.Fields['Saldo final'].Value,
+                BalanceVariation: parseFloat((accountEnd.Fields['Saldo final'].Value -
+                    header.Fields['Importe saldo inicial'].Value).toFixed(2))
+            });
+
+        }
+
+        return headers;
 
     }
 
@@ -227,40 +331,67 @@ N43.File = class {
     }
 
     /**
+     * Devuelve el índice del registro facilitado como parámetro.
+     * @param {Record} record Registro de archivo norma 43.
+     * @returns {Number} Indice del registro en la colección.
+     */
+    GetRecordIndex(record) {
+
+        return this.Records.indexOf(record);
+
+    }
+
+    /**
      * Devuelve una colección de transacciones a partir
      * de los datos del fichero de norma 43.
      * @returns {Objet} Resultado de transacciones.
      */
     GetTransactions() {
 
-        let result = Object.assign({}, this.Header);
-        result.Transactions = [];
+        let results = [];
 
-        let transactionsAmount = 0;
-        let balance = this.Header.BalanceStart;
+        for (let h = 0; h < this.#Headers.length; h++)
+        {
 
-        for (let t = 0; t < this.#RawTransactions.length; t++) {
+            var header = this.Headers[h];
 
-            let rawTransaction = this.#RawTransactions[t];
-            let transaction = {};
-            let info = rawTransaction.RemittanceInformationUnstructured.join(" ");
+            let result = Object.assign({}, header);
+            result.Transactions = [];
 
-            Object.assign(transaction, rawTransaction);
-            transaction.RemittanceInformationUnstructured = info;
+            let transactionsAmount = 0;
+            let balance = header.BalanceStart;
 
-            transactionsAmount += transaction.Amount;
-            balance += transaction.Amount;
+            for (let t = 0; t < this.#RawTransactions.length; t++) {
 
-            transaction.Balance = parseFloat(balance.toFixed(2));
-			transaction.Order = t + 1;
+                let rawTransaction = this.#RawTransactions[t];
 
-            result.Transactions.push(transaction);
+                if (rawTransaction.HeaderIndex === h) {
+
+                    let transaction = {};
+                    let info = rawTransaction.RemittanceInformationUnstructured.join(" ");
+
+                    Object.assign(transaction, rawTransaction);
+                    transaction.RemittanceInformationUnstructured = info;
+
+                    transactionsAmount += transaction.Amount;
+                    balance += transaction.Amount;
+
+                    transaction.Balance = parseFloat(balance.toFixed(2));
+                    transaction.Order = t + 1;
+
+                    result.Transactions.push(transaction);
+
+                }
+
+            }
+
+            result.TransactionsAmount = parseFloat(transactionsAmount.toFixed(2));
+
+            results.push(result);
 
         }
 
-        result.TransactionsAmount = parseFloat(transactionsAmount.toFixed(2));
-
-        return result;
+        return results;
 
     }
 
