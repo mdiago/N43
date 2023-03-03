@@ -158,79 +158,26 @@ N43.File = class {
             if (currentMovement)
                 this.#RawTransactions.push(currentMovement);
 
+        }    
 
+    }
 
-        }
+    /**
+     * Orden de las transacciones.
+     * @returns {Number} Devuelve 1 para asc y -1 para desc.
+     * */
+    get OrderType() {
 
-        //let currentMovement = null;
+        var sumDiffDates = 0;
 
-        //for (let i = 0; i < this.Records.length; i++) {
+        this.#RawTransactions.forEach((current, index, arr) => {
 
-        //    let record = this.Records[i];
+            if (index > 0 && index < arr.length - 2) 
+                sumDiffDates += arr[index].BookingDate.valueOf() - arr[index - 1].BookingDate.valueOf();
 
-        //    switch (record.RecordType) {
+        });
 
-        //        case 'Movimiento':
-
-        //            if (currentMovement)
-        //                this.#RawTransactions.push(currentMovement);
-
-        //            let mult = record.Fields['Clave Debe o Haber'].Value === "1" ? -1 : 1;
-
-        //            currentMovement =
-        //            {
-        //                BookingDate: record.Fields['Fecha operación'].Value,
-        //                ValueDate: record.Fields['Fecha valor'].Value,
-        //                RemittanceInformationUnstructured: [(record.Fields['Concepto propio'].Value + " " + [N43.Concepts[record.Fields['Concepto común'].Value]]).trim()],
-        //                Currency: this.Header.Currency,
-        //                Currency: this.Header.Currency,
-        //                Amount: mult * record.Fields['Importe'].Value,
-        //                DocumentCurrency: this.Header.Currency,
-        //                DocumentAmount: mult * record.Fields['Importe'].Value
-        //            };
-
-        //            break;
-        //        case 'ComplementarioConcepto':
-
-        //            if (currentMovement) {
-
-        //                let concepto = record.Fields['Concepto 1'].Value.trim();
-
-        //                if (concepto)
-        //                    currentMovement.RemittanceInformationUnstructured.push(concepto);
-
-        //                concepto = record.Fields['Concepto 2'].Value.trim();
-
-        //                if (concepto)
-        //                    currentMovement.RemittanceInformationUnstructured.push(concepto);
-
-        //            }
-
-        //            break;
-
-        //        case 'ComplementarioImporte':
-
-        //            if (currentMovement) {
-
-        //                let divisa = record.Fields['Clave divisa origen del movimiento'].Value.trim();
-        //                let currency = N43.Currencies[divisa];
-
-        //                if (currency !== currentMovement.Currency) {
-        //                    currentMovement.DocumentCurrency = divisa;
-        //                    currentMovement.DocumentAmount = record.Fields['Importe'].Value;
-
-        //                };
-
-        //            }
-
-        //            break;
-
-        //    };
-
-        //}
-
-        //if (currentMovement)
-        //    this.#RawTransactions.push(currentMovement);
+        return sumDiffDates / Math.abs(sumDiffDates);
 
     }
 
@@ -386,6 +333,28 @@ N43.File = class {
             }
 
             result.TransactionsAmount = parseFloat(transactionsAmount.toFixed(2));
+
+            if (this.OrderType === -1) {
+
+                // Orden descendente, reverse y recalculo saldo
+                result.Transactions.reverse();
+
+                balance = header.BalanceStart;
+                transactionsAmount = 0;
+
+                for (let t = 0; t < result.Transactions.length; t++) {
+
+                    var transaction = result.Transactions[t];
+
+                    transactionsAmount += transaction.Amount;
+                    balance += transaction.Amount;
+
+                    transaction.Balance = parseFloat(balance.toFixed(2));
+                    transaction.Order = t + 1;                                      
+
+                }
+
+            }
 
             results.push(result);
 
