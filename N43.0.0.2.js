@@ -1,4 +1,4 @@
-﻿/* N43 0.0.0
+﻿/* N43 0.0.2
  * ©2023 Irene Solutions SL
  */
 
@@ -8,7 +8,7 @@
  *              según las especificaciones de la AEB en las serie normas y 
  *              procedimientos bancarios 43.
  * @version     0.0.0
- * @file        N43.0.0.1.js
+ * @file        N43.0.0.2.js
  * @author      Irene Solutions SL
  * @contact     support@irenesolutions.com
  * @copyright   Copyright 2023 Irene Solutions SL.
@@ -252,8 +252,10 @@ N43.File = class {
                     `${header.Fields['Nº de cuenta']}`,
                 BankId: `${header.Fields['Clave de la Entidad']}`,
                 Currency: N43.Currencies[`${header.Fields['Clave de divisa']}`],
-                BalanceStart: header.Fields['Importe saldo inicial'].Value,
-                BalanceEnd: accountEnd.Fields['Saldo final'].Value,
+                BalanceStart: (this.OrderType === 1) ?
+                    header.Fields['Importe saldo inicial'].Value : accountEnd.Fields['Saldo final'].Value,
+                BalanceEnd: (this.OrderType === 1) ?
+                    accountEnd.Fields['Saldo final'].Value : header.Fields['Importe saldo inicial'].Value,
                 BalanceVariation: parseFloat((accountEnd.Fields['Saldo final'].Value -
                     header.Fields['Importe saldo inicial'].Value).toFixed(2))
             });

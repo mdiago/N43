@@ -23,8 +23,11 @@
             padding: 1rem;
         }
 
-        .amount, .balance {
+        .amount, .balance, .order {
             text-align: right;
+        }
+
+        .amount, .balance {            
             width: 150px;
         }
 
@@ -50,7 +53,7 @@
     <div id="transactionsContainer"></div>
 
     <!-- Script N43  -->
-    <script src="N43.0.0.1.js"></script>
+    <script src="N43.0.0.2.js"></script>
 
     <!-- Ejemplo de uso -->
     <script>
@@ -60,6 +63,8 @@
          * @param {Object} files Archivos seleccionados.
          * */
         function LoadFile(files) {
+
+            ClearTable();
 
             for (var i = 0; i < files.length; i++) {
 
@@ -74,8 +79,6 @@
                     var transactionResults = GetTransactionResult(textFileContent);
 
                     transactionResults.forEach((transactionResult) => { ShowTable(transactionResult); })
-					
-                    
 
                 };
 
@@ -91,7 +94,6 @@
          * contenido del archivo de norma 43.
          * */
         function GetTransactionResult(fileText){
-        
             
             // Creamos el objeto N43.File
             var fileN43 = new N43.File({ Text: fileText });
@@ -150,6 +152,7 @@
             for (var t = 0; t < transactions.length; t++) {
                 var transaction = transactions[t];
                 html += `<tr>` +
+                    `<td class="order">${transaction.Order}</td>` +
                     `<td class="bookingDate">${transaction.BookingDate.toISOString().substr(0, 10)}</td>` +
                     `<td class="info">${transaction.RemittanceInformationUnstructured}</td>` +
                     `<td class="amount">${ToAmountFormat(transaction.Amount, 2, ",", ".")}</td>` +
@@ -162,6 +165,15 @@
 
             document.getElementById("transactionsContainer").innerHTML += html;
         
+        };
+
+        /**
+         * Limpia datos anteriores.
+         * */
+        function ClearTable() {
+
+            document.getElementById("transactionsContainer").innerHTML = "";
+
         };
 
     </script>
